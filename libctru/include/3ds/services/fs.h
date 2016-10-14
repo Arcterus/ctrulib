@@ -237,8 +237,14 @@ typedef struct
 /// Filesystem archive handle, providing access to a filesystem's contents.
 typedef u64 FS_Archive;
 
-/// Initializes FS.
-Result fsInit(void);
+/**
+ * @brief Initializes FS from a service name, such as "fs:USER" or "fs:LDR"
+ * @param service The name of the service to initialize from.
+ */
+Result fsInitFromService(const char *service);
+
+/// Initializes FS with the fs:USER service.
+Result fsInitDefault(void);
 
 /// Exits FS.
 void fsExit(void);

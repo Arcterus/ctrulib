@@ -35,14 +35,13 @@ static Handle fsSessionForArchive(FS_Archive archive)
 	return fsSession();
 }
 
-Result fsInit(void)
-{
+Result fsInitFromService(const char* service) {
 	Result ret = 0;
 
 	if (AtomicPostIncrement(&fsuRefCount)) return 0;
 
-	ret = srvGetServiceHandle(&fsuHandle, "fs:USER");
-	if (R_SUCCEEDED(ret) && envGetHandle("fs:USER") == 0)
+	ret = srvGetServiceHandle(&fsuHandle, service);
+	if (R_SUCCEEDED(ret) && envGetHandle(service) == 0)
 	{
 		ret = FSUSER_Initialize(fsuHandle);
 		if (R_FAILED(ret)) svcCloseHandle(fsuHandle);
@@ -50,6 +49,11 @@ Result fsInit(void)
 
 	if (R_FAILED(ret)) AtomicDecrement(&fsuRefCount);
 	return ret;
+}
+
+Result fsInitDefault(void)
+{
+	return fsInitFromService("fs:USER");
 }
 
 void fsExit(void)

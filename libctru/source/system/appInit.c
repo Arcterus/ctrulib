@@ -12,6 +12,6 @@ void __attribute__((weak)) __appInit(void) {
 	aptInit();
 	hidInit();
 
-	fsInit();
+	fsInitDefault();
 	sdmcInit();
 }
