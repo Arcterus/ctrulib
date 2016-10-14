@@ -41,7 +41,7 @@ Result fsInitFromService(const char* service) {
 	if (AtomicPostIncrement(&fsuRefCount)) return 0;
 
 	ret = srvGetServiceHandle(&fsuHandle, service);
-	if (R_SUCCEEDED(ret) && envGetHandle(service) == 0)
+	if (R_SUCCEEDED(ret))
 	{
 		ret = FSUSER_Initialize(fsuHandle);
 		if (R_FAILED(ret)) svcCloseHandle(fsuHandle);
