@@ -13,6 +13,39 @@
 
 static Handle srvHandle;
 static int srvRefCount;
+static RecursiveLock initLock;
+static int initLockinit = 0;
+
+Result srvSysInit(void)
+{
+	Result rc = 0;
+
+	if (!initLockinit) {
+		RecursiveLock_Init(&initLock);
+	}
+	RecursiveLock_Lock(&initLock);
+
+	if (srvRefCount > 0) {
+		RecursiveLock_Unlock(&initLock);
+		return MAKERESULT(RL_INFO, RS_NOP, 25, RD_ALREADY_INITIALIZED);
+	}
+
+	while (1) {
+		rc = svcConnectToPort(&srvHandle, "srv:");
+		if (R_LEVEL(rc) != RL_PERMANENT || R_SUMMARY(rc) != RS_NOTFOUND || R_DESCRIPTION(rc) != RD_NOT_FOUND)
+			break;
+		svcSleepThread(500000);
+	}
+
+	if (R_SUCCEEDED(rc)) {
+		rc = srvRegisterClient();
+		srvRefCount++;
+	}
+
+	RecursiveLock_Unlock(&initLock);
+
+	return rc;
+}
 
 Result srvInit(void)
 {
@@ -35,6 +68,29 @@ void srvExit(void)
 
 	if (srvHandle != 0) svcCloseHandle(srvHandle);
 	srvHandle = 0;
+}
+
+Result srvSysExit()
+{
+	Result rc;
+
+	RecursiveLock_Lock(&initLock);
+	if (srvRefCount > 1) {
+		srvRefCount--;
+		RecursiveLock_Unlock(&initLock);
+		return MAKERESULT(RL_INFO, RS_NOP, 25, RD_BUSY);
+	}
+
+	if (srvHandle != 0)
+		svcCloseHandle(srvHandle);
+	else
+		svcBreak(USERBREAK_ASSERT); // This should never happen.
+
+	srvHandle = 0;
+	srvRefCount--;
+	RecursiveLock_Unlock(&initLock);
+
+	return rc;
 }
 
 Handle *srvGetSessionHandle(void)

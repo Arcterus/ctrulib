@@ -4,6 +4,12 @@
  */
 #pragma once
 
+/// Initializes the service API in a way that is safe during the boot process.
+Result srvSysInit(void);
+
+/// Deinitializes the service API in a way that is safe from system modules.
+Result srvSysExit(void);
+
 /// Initializes the service API.
 Result srvInit(void);
 
