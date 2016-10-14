@@ -40,7 +40,7 @@ Result fsInitFromService(const char* service) {
 
 	if (AtomicPostIncrement(&fsuRefCount)) return 0;
 
-	ret = srvGetServiceHandle(&fsuHandle, service);
+	ret = srvGetServiceHandleDirect(&fsuHandle, service);
 	if (R_SUCCEEDED(ret))
 	{
 		ret = FSUSER_Initialize(fsuHandle);

@@ -12,7 +12,7 @@ Result fsregInit(void)
 	if (AtomicPostIncrement(&fsregRefCount))
 		return 0;
 
-	ret = srvGetServiceHandle(&fsregHandle, "fs:REG");
+	ret = srvGetServiceHandleDirect(&fsregHandle, "fs:REG");
 
 	if (R_FAILED(ret))
 		AtomicDecrement(&fsregRefCount);
