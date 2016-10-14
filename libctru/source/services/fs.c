@@ -5,6 +5,7 @@
 #include <3ds/srv.h>
 #include <3ds/synchronization.h>
 #include <3ds/services/fs.h>
+#include <3ds/services/fsreg.h>
 #include <3ds/ipc.h>
 #include <3ds/env.h>
 #include "../internal.h"
@@ -35,6 +36,27 @@ static Handle fsSessionForArchive(FS_Archive archive)
 	return fsSession();
 }
 
+static Result
+fsldrPatchPermissions(void)
+{
+	u32 pid;
+	Result res;
+	FS_ProgramInfo info;
+	u32 storage[8] = { 0 };
+
+	storage[6] = 0x680; // SDMC access and NAND access flag
+	info.programId = 0x0004013000001302LL; // loader PID
+	info.mediaType = MEDIATYPE_NAND;
+
+	res = svcGetProcessId(&pid, 0xFFFF8001);
+
+	if (R_SUCCEEDED(res)) {
+		res = FSREG_Register(pid, 0xFFFF000000000000LL, &info, (u8 *)storage);
+	}
+
+	return res;
+}
+
 Result fsInitFromService(const char* service) {
 	Result ret = 0;
 
@@ -43,6 +65,8 @@ Result fsInitFromService(const char* service) {
 	ret = srvGetServiceHandleDirect(&fsuHandle, service);
 	if (R_SUCCEEDED(ret))
 	{
+		if (!strcmp(service, "fs:LDR"))
+			fsldrPatchPermissions();
 		ret = FSUSER_Initialize(fsuHandle);
 		if (R_FAILED(ret)) svcCloseHandle(fsuHandle);
 	}
