@@ -5,6 +5,9 @@ Library for writing user mode ARM11 code for the 3DS (CTR)
 This library aims to provide the foundations necessary to write 3DS Homebrew, and straightforwardly access the different functionalities provided by the 3DS operating system.
 It is not meant to provide higher level functions; to put things in perspective, the purpose of libctru would be to sit between the OS and a possible port of SDL rather than replace it.
 
+The purpose of this fork of ctrulib is to clean up handling of code which is userland, but not an application -- such as system modules and applets.
+It is not intended to replace ctrulib in any way. The aim is to reduce repetition and replacements commonly used in these contexts while staying as vanilla as possible.
+
 # Setup
 
 libctru is just a library and needs a toolchain to function. devkitARM (created by [devkitPro](http://devkitpro.org)) is the officially supported ARM cross compiling toolchain, which provides the framework necessary to supply a usable POSIX-like environment, with working C and C++ standard libraries; as well as the tools required to compile homebrew in the 3DSX format, and assemble GPU shaders. The use of other ARM toolchains is severely discouraged.
