@@ -898,6 +898,14 @@ Result svcCloseHandle(Handle handle);
 Result svcDuplicateHandle(Handle* out, Handle original);
 
 /**
+ * @brief Gets a handle info.
+ * @param[out] out Pointer to output the handle info to.
+ * @param handle Handle to get the info for.
+ * @param param Parameter clarifying the handle info type.
+ */
+Result svcGetHandleInfo(s64* out, Handle handle, u32 param);
+
+/**
  * @brief Gets the system info.
  * @param[out] out Pointer to output the system info to.
  * @param type Type of system info to retrieve.
@@ -907,12 +915,9 @@ Result svcGetSystemInfo(s64* out, u32 type, s32 param);
 
 /**
  * @brief Sets the current kernel state.
- * @param type Type of state to set.
- * @param param0 First parameter of the state.
- * @param param1 Second parameter of the state.
- * @param param2 Third parameter of the state.
+ * @param type Type of state to set (the other parameters depend on it).
  */
-Result svcKernelSetState(u32 type, u32 param0, u32 param1, u32 param2);
+Result svcKernelSetState(u32 type, ...);
 ///@}
 
 
@@ -969,5 +974,3 @@ Result svcContinueDebugEvent(Handle debug, u32 flags);
  * @param callback Function to execute.
  */
 Result svcBackdoor(s32 (*callback)(void));
-
-
