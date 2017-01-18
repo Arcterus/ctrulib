@@ -9,7 +9,7 @@ endif
 include $(DEVKITARM)/base_rules
 
 export LIBCTRU_MAJOR	:= 1
-export LIBCTRU_MINOR	:= 1
+export LIBCTRU_MINOR	:= 2
 export LIBCTRU_PATCH	:= 0
 
 
@@ -44,7 +44,7 @@ INCLUDES	:=	include
 ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 
 CFLAGS	:=	-g -Wall -Werror -O2 -mword-relocations \
-			-ffunction-sections -fno-strict-aliasing \
+			-ffunction-sections \
 			-fomit-frame-pointer \
 			$(ARCH)
 
