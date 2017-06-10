@@ -48,6 +48,7 @@ extern "C" {
 #include <3ds/services/httpc.h>
 #include <3ds/services/uds.h>
 #include <3ds/services/ndm.h>
+#include <3ds/services/nim.h>
 #include <3ds/services/nwmext.h>
 #include <3ds/services/ir.h>
 #include <3ds/services/ns.h>
@@ -76,7 +77,8 @@ extern "C" {
 #include <3ds/ndsp/channel.h>
 
 #include <3ds/applets/swkbd.h>
-
+#include <3ds/applets/error.h>
+  
 #include <3ds/sdmc.h>
 #include <3ds/romfs.h>
 #include <3ds/font.h>

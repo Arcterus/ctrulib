@@ -121,9 +121,9 @@ typedef struct {
 
 /// Reasons for an exit process event.
 typedef enum {
-	EXITPROCESS_EVENT_NONE                = 0, ///< No reason.
-	EXITPROCESS_EVENT_TERMINATE           = 1, ///< Process terminated.
-	EXITPROCESS_EVENT_UNHANDLED_EXCEPTION = 2, ///< Unhandled exception occurred.
+	EXITPROCESS_EVENT_EXIT                = 0, ///< Process exited either normally or due to an uncaught exception.
+	EXITPROCESS_EVENT_TERMINATE           = 1, ///< Process has been terminated by @ref svcTerminateProcess.
+	EXITPROCESS_EVENT_DEBUG_TERMINATE     = 2, ///< Process has been terminated by @ref svcTerminateDebugProcess.
 } ExitProcessEventReason;
 
 /// Event relating to the exiting of a process.
@@ -140,10 +140,10 @@ typedef struct {
 
 /// Reasons for an exit thread event.
 typedef enum {
-	EXITTHREAD_EVENT_NONE              = 0, ///< No reason.
+	EXITTHREAD_EVENT_EXIT              = 0, ///< Thread exited.
 	EXITTHREAD_EVENT_TERMINATE         = 1, ///< Thread terminated.
-	EXITTHREAD_EVENT_UNHANDLED_EXC     = 2, ///< Unhandled exception occurred.
-	EXITTHREAD_EVENT_TERMINATE_PROCESS = 3, ///< Process terminated.
+	EXITTHREAD_EVENT_EXIT_PROCESS      = 2, ///< Process exited either normally or due to an uncaught exception.
+	EXITTHREAD_EVENT_TERMINATE_PROCESS = 3, ///< Process has been terminated by @ref svcTerminateProcess.
 } ExitThreadEventReason;
 
 /// Event relating to the exiting of a thread.
@@ -200,7 +200,7 @@ typedef struct {
 
 /// Event relating to @ref svcBreakDebugProcess
 typedef struct {
-	void *threads[4]; ///< KThread instances of the attached process's that were running on each at the time of the function call (only the first 2 values are meaningful on O3DS).
+	s32 thread_ids[4]; ///< IDs of the attached process's threads that were running on each core at the time of the @ref svcBreakDebugProcess call, or -1 (only the first 2 values are meaningful on O3DS).
 } DebuggerBreakExceptionEvent;
 
 /// Event relating to exceptions.
@@ -279,11 +279,11 @@ typedef struct {
 
 /// Debug flags for an attached process, set by @ref svcContinueDebugEvent
 typedef enum {
-	DBG_NO_ERRF_CPU_EXCEPTION_DUMPS   = BIT(0), ///< Don't produce err:f-format dumps for CPU exceptions (including watchpoints and breakpoints, regardless of any @ref svcKernelSetState call).
-	DBG_SIGNAL_FAULT_EXCEPTION_EVENTS = BIT(1), ///< Signal fault exception events. See @ref FaultExceptionEvent.
-	DBG_SIGNAL_SCHEDULE_EVENTS        = BIT(2), ///< Signal schedule in/out events. See @ref ScheduleInOutEvent.
-	DBG_SIGNAL_SYSCALL_EVENTS         = BIT(3), ///< Signal syscall in/out events. See @ref SyscallInOutEvent.
-	DBG_SIGNAL_MAP_EVENTS             = BIT(4), ///< Signal map events. See @ref MapEvent.
+	DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS   = BIT(0), ///< Inhibit user-defined CPU exception handlers (including watchpoints and breakpoints, regardless of any @ref svcKernelSetState call).
+	DBG_SIGNAL_FAULT_EXCEPTION_EVENTS         = BIT(1), ///< Signal fault exception events. See @ref FaultExceptionEvent.
+	DBG_SIGNAL_SCHEDULE_EVENTS                = BIT(2), ///< Signal schedule in/out events. See @ref ScheduleInOutEvent.
+	DBG_SIGNAL_SYSCALL_EVENTS                 = BIT(3), ///< Signal syscall in/out events. See @ref SyscallInOutEvent.
+	DBG_SIGNAL_MAP_EVENTS                     = BIT(4), ///< Signal map events. See @ref MapEvent.
 } DebugFlags;
 
 typedef struct {
@@ -295,7 +295,7 @@ typedef struct {
 typedef enum {
 	THREADCONTEXT_CONTROL_CPU_GPRS  = BIT(0), ///< Control r0-r12.
 	THREADCONTEXT_CONTROL_CPU_SPRS  = BIT(1), ///< Control sp, lr, pc, cpsr.
-	THREADCONTEXT_CONTROL_FPU_GPRS  = BIT(2), ///< Control d0-d15 (or f0-f31).
+	THREADCONTEXT_CONTROL_FPU_GPRS  = BIT(2), ///< Control d0-d15 (or s0-s31).
 	THREADCONTEXT_CONTROL_FPU_SPRS  = BIT(3), ///< Control fpscr, fpexc.
 
 	THREADCONTEXT_CONTROL_CPU_REGS  = BIT(0) | BIT(1), ///< Control r0-r12, sp, lr, pc, cpsr.
@@ -438,20 +438,20 @@ Result svcCreateMemoryBlock(Handle* memblock, u32 addr, u32 size, MemPerm my_per
 Result svcMapMemoryBlock(Handle memblock, u32 addr, MemPerm my_perm, MemPerm other_perm);
 
 /**
- * @brief Maps a block of process memory.
+ * @brief Maps a block of process memory, starting from address 0x00100000.
  * @param process Handle of the process.
- * @param startAddr Start address of the memory to map.
- * @param endAddr End address of the memory to map.
+ * @param destAddress Address of the block of memory to map, in the current (destination) process.
+ * @param size Size of the block of memory to map (truncated to a multiple of 0x1000 bytes).
  */
-Result svcMapProcessMemory(Handle process, u32 startAddr, u32 endAddr);
+Result svcMapProcessMemory(Handle process, u32 destAddress, u32 size);
 
 /**
- * @brief Unmaps a block of process memory.
+ * @brief Unmaps a block of process memory, starting from address 0x00100000.
  * @param process Handle of the process.
- * @param startAddr Start address of the memory to unmap.
- * @param endAddr End address of the memory to unmap.
+ * @param destAddress Address of the block of memory to unmap, in the current (destination) process.
+ * @param size Size of the block of memory to unmap (truncated to a multiple of 0x1000 bytes).
  */
-Result svcUnmapProcessMemory(Handle process, u32 startAddr, u32 endAddr);
+Result svcUnmapProcessMemory(Handle process, u32 destAddress, u32 size);
 
 /**
  * @brief Unmaps a block of shared memory
@@ -511,7 +511,15 @@ Result svcQueryProcessMemory(MemInfo* info, PageInfo* out, Handle process, u32 a
 Result svcInvalidateProcessDataCache(Handle process, void* addr, u32 size);
 
 /**
- * @brief Flushes a process's data cache.
+ * @brief Cleans a process's data cache.
+ * @param process Handle of the process.
+ * @param addr Address to clean.
+ * @param size Size of the memory to clean.
+ */
+Result svcStoreProcessDataCache(Handle process, void* addr, u32 size);
+
+/**
+ * @brief Flushes (cleans and invalidates) a process's data cache.
  * @param process Handle of the process.
  * @param addr Address to flush.
  * @param size Size of the memory to flush.
@@ -606,6 +614,14 @@ Result svcCreateCodeSet(Handle* out, const CodeSetInfo *info, void* code_ptr, vo
 Result svcCreateProcess(Handle* out, Handle codeset, const u32 *arm11kernelcaps, u32 arm11kernelcaps_num);
 
 /**
+ * @brief Gets a process's affinity mask.
+ * @param[out] affinitymask Pointer to store the affinity masks.
+ * @param process Handle of the process.
+ * @param processorcount Number of processors.
+ */
+Result svcGetProcessAffinityMask(u8* affinitymask, Handle process, s32 processorcount);
+
+/**
  * @brief Sets a process's affinity mask.
  * @param process Handle of the process.
  * @param affinitymask Pointer to retrieve the affinity masks from.
@@ -614,9 +630,16 @@ Result svcCreateProcess(Handle* out, Handle codeset, const u32 *arm11kernelcaps,
 Result svcSetProcessAffinityMask(Handle process, const u8* affinitymask, s32 processorcount);
 
 /**
+ * Gets a process's ideal processor.
+ * @param[out] processorid Pointer to store the ID of the process's ideal processor.
+ * @param process Handle of the process.
+ */
+Result svcGetProcessIdealProcessor(s32 *processorid, Handle process);
+
+/**
  * Sets a process's ideal processor.
  * @param process Handle of the process.
- * @param processorid ID of the thread's ideal processor.
+ * @param processorid ID of the process's ideal processor.
  */
 Result svcSetProcessIdealProcessor(Handle process, s32 processorid);
 

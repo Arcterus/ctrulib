@@ -187,7 +187,7 @@ ssize_t con_write(struct _reent *r,void *fd,const char *ptr, size_t len) {
 	int i, count = 0;
 	char *tmp = (char*)ptr;
 
-	if(!tmp || len<=0) return -1;
+	if(!tmp) return -1;
 
 	i = 0;
 
@@ -471,14 +471,14 @@ static const devoptab_t dotab_stdout = {
 };
 
 //---------------------------------------------------------------------------------
-ssize_t debug_write(struct _reent *r, void *fd, const char *ptr, size_t len) {
+static ssize_t debug_write(struct _reent *r, void *fd, const char *ptr, size_t len) {
 //---------------------------------------------------------------------------------
 	svcOutputDebugString(ptr,len);
 	return len;
 }
 
-static const devoptab_t dotab_3dmoo = {
-	"3dmoo",
+static const devoptab_t dotab_svc = {
+	"svc",
 	0,
 	NULL,
 	NULL,
@@ -553,8 +553,8 @@ void consoleDebugInit(debugDevice device){
 
 	switch(device) {
 
-	case debugDevice_3DMOO:
-		devoptab_list[STD_ERR] = &dotab_3dmoo;
+	case debugDevice_SVC:
+		devoptab_list[STD_ERR] = &dotab_svc;
 		buffertype = _IOLBF;
 		break;
 	case debugDevice_CONSOLE:

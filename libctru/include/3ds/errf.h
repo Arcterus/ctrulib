@@ -28,17 +28,16 @@ typedef enum {
 typedef struct {
 	ERRF_ExceptionType type; ///< Type of the exception. One of the ERRF_EXCEPTION_* values.
 	u8  reserved[3];
-	u32 reg1;                ///< If type is prefetch, this should be ifsr, and on data abort dfsr
-	u32 reg2;                ///< If type is prefetch, this should be r15, and dfar on data abort
+	u32 fsr;                ///< ifsr (prefetch abort) / dfsr (data abort)
+	u32 far;                ///< pc = ifar (prefetch abort) / dfar (data abort)
 	u32 fpexc;
 	u32 fpinst;
-	u32 fpint2;
+	u32 fpinst2;
 } ERRF_ExceptionInfo;
 
 typedef struct {
 	ERRF_ExceptionInfo excep;   ///< Exception info struct
 	CpuRegisters regs;          ///< CPU register dump.
-	u8 pad[4];
 } ERRF_ExceptionData;
 
 typedef struct {
@@ -52,7 +51,7 @@ typedef struct {
 	u64 appTitleId;    ///< Application Title ID.
 	union {
 		ERRF_ExceptionData exception_data; ///< Data for when type is ERRF_ERRTYPE_EXCEPTION
-		char failure_mesg[60];             ///< String for when type is ERRF_ERRTYPE_FAILURE
+		char failure_mesg[0x60];             ///< String for when type is ERRF_ERRTYPE_FAILURE
 	} data;                                ///< The different types of data for errors.
 } ERRF_FatalErrInfo;
 
@@ -111,3 +110,13 @@ Result ERRF_ThrowResult(Result failure);
  * on development units/patched ErrDisp.
  */
 Result ERRF_ThrowResultWithMessage(Result failure, const char* message);
+
+/**
+ * @brief Handles an exception using ErrDisp.
+ * @param excep Exception information
+ * @param regs CPU registers
+ *
+ * You might want to clear ENVINFO's bit0 to be able to see any debugging information.
+ * @sa threadOnException
+ */
+void ERRF_ExceptionHandler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) __attribute__((noreturn));

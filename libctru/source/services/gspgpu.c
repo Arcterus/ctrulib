@@ -65,7 +65,7 @@ Result gspInitEventHandler(Handle _gspEvent, vu8* _gspSharedMem, u8 gspThreadId)
 	gspEvent = _gspEvent;
 	gspEventData = _gspSharedMem + gspThreadId*0x40;
 	gspRunEvents = true;
-	gspEventThread = threadCreate(gspEventThreadMain, 0x0, GSP_EVENT_STACK_SIZE, 0x31, -2, true);
+	gspEventThread = threadCreate(gspEventThreadMain, 0x0, GSP_EVENT_STACK_SIZE, 0x1A, -2, true);
 	return 0;
 }
 
@@ -144,6 +144,11 @@ static int popInterrupt()
 	return curEvt;
 }
 
+// Dummy version to avoid linking in gxqueue.c if not actually used
+__attribute__((weak)) void gxCmdQueueInterrupt(GSPGPU_Event irq)
+{
+}
+
 void gspEventThreadMain(void *arg)
 {
 	while (gspRunEvents)
@@ -160,6 +165,7 @@ void gspEventThreadMain(void *arg)
 
 			if (curEvt < GSPGPU_EVENT_MAX)
 			{
+				gxCmdQueueInterrupt((GSPGPU_Event)curEvt);
 				if (gspEventCb[curEvt])
 				{
 					ThreadFunc func = gspEventCb[curEvt];

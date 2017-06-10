@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <3ds/types.h>
+#include <3ds/svc.h>
 #include <3ds/gpu/gpu.h>
 #include <3ds/gpu/gx.h>
 #include <3ds/gpu/shbin.h>
@@ -12,25 +13,6 @@
 u32* gpuCmdBuf;
 u32 gpuCmdBufSize;
 u32 gpuCmdBufOffset;
-
-void GPUCMD_SetBuffer(u32* adr, u32 size, u32 offset)
-{
-	gpuCmdBuf=adr;
-	gpuCmdBufSize=size;
-	gpuCmdBufOffset=offset;
-}
-
-void GPUCMD_SetBufferOffset(u32 offset)
-{
-	gpuCmdBufOffset=offset;
-}
-
-void GPUCMD_GetBuffer(u32** adr, u32* size, u32* offset)
-{
-	if(adr)*adr=gpuCmdBuf;
-	if(size)*size=gpuCmdBufSize;
-	if(offset)*offset=gpuCmdBufOffset;
-}
 
 void GPUCMD_AddRawCommands(const u32* cmd, u32 size)
 {
@@ -57,27 +39,39 @@ void GPUCMD_FlushAndRun(void)
 
 void GPUCMD_Add(u32 header, const u32* param, u32 paramlength)
 {
-	u32 zero=0x0;
-
-	if(!param || !paramlength)
-	{
-		paramlength=1;
-		param=&zero;
-	}
-
-	if(!gpuCmdBuf || gpuCmdBufOffset+paramlength+1>gpuCmdBufSize)return;
+	if(!paramlength)paramlength=1;
+	if(!gpuCmdBuf || gpuCmdBufOffset+paramlength+1>gpuCmdBufSize)
+		svcBreak(USERBREAK_PANIC); // Shouldn't happen.
 
 	paramlength--;
 	header|=(paramlength&0x7ff)<<20;
 
-	gpuCmdBuf[gpuCmdBufOffset]=param[0];
+	gpuCmdBuf[gpuCmdBufOffset]=param ? param[0] : 0;
 	gpuCmdBuf[gpuCmdBufOffset+1]=header;
 
-	if(paramlength)memcpy(&gpuCmdBuf[gpuCmdBufOffset+2], &param[1], paramlength*4);
+	if(paramlength)
+	{
+		if(param)memcpy(&gpuCmdBuf[gpuCmdBufOffset+2], &param[1], paramlength*4);
+		else     memset(&gpuCmdBuf[gpuCmdBufOffset+2], 0, paramlength*4);
+	}
 
 	gpuCmdBufOffset+=paramlength+2;
 
 	if(paramlength&1)gpuCmdBuf[gpuCmdBufOffset++]=0x00000000; //alignment
+}
+
+void GPUCMD_Split(u32** addr, u32* size)
+{
+	GPUCMD_AddWrite(GPUREG_FINALIZE, 0x12345678);
+	if (gpuCmdBufOffset & 3)
+		GPUCMD_AddWrite(GPUREG_FINALIZE, 0x12345678); // 16-byte align the buffer
+
+	if (addr) *addr = gpuCmdBuf;
+	if (size) *size = gpuCmdBufOffset;
+
+	gpuCmdBuf       += gpuCmdBufOffset;
+	gpuCmdBufSize   -= gpuCmdBufOffset;
+	gpuCmdBufOffset  = 0;
 }
 
 void GPUCMD_Finalize(void)
